@@ -93,6 +93,8 @@ def main():
             })
             df = pd.concat([df, new_data], ignore_index=True)
 
+            print(df)
+
             # print(job_title)
             # print(job_url)
             # print(company_name)
