@@ -15,7 +15,7 @@ def main():
     # job_type = '0kf%3Aattr%287EQCZ%29%3B' # Fresh Grad
     job_type = ''
 
-    today = datetime.now().strftime("%Y%m%d_%H%M%S")
+    today = datetime.now().strftime("%Y-%m-%d")
 
     df = pd.DataFrame({
         'Job Title': [''],
