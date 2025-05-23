@@ -87,7 +87,7 @@ def main():
                 except:
                     sb.js_click(job_link_selector)
                 
-                sb.sleep(2)
+                sb.sleep(4)
 
                 try:
                     job_title = card.xpath('.//*[@class="base-search-card__title"]')[0].text.strip()
