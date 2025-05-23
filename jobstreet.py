@@ -27,9 +27,9 @@ def parse_date_listed(date_listed_str, date_extracted_str):
         'twenty six': 26, 'twenty seven': 27, 'twenty eight': 28,
         'twenty nine': 29, 'thirty': 30, 'thirty one': 31
     }
-    # Handle "more than thirty days ago"
     if "more than thirty days ago" in date_listed_str:
         return "30+ days ago"
+    
     # Extract number and unit
     match = re.search(r'listed ([a-z\s\d]+) (hour|day)s? ago', date_listed_str)
     if not match:
