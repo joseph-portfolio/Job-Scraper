@@ -4,6 +4,8 @@ from lxml import etree
 from datetime import datetime
 import pandas as pd
 from seleniumbase import SB
+from ai_summarize import summarize
+import asyncio
 
 def get_url (title, location, last_listed, work_type, experience):
     template = 'https://www.linkedin.com/jobs/search?keywords={}&location={}&geoId=103121230&f_TPR={}&f_WT={}&f_E={}&position=1&pageNum=0'
@@ -13,9 +15,8 @@ def get_url (title, location, last_listed, work_type, experience):
 def main():
     title = 'Python'
     location = 'Philippines'
-    tpr = '' # Last listed
-    # work_type = '3%2C2' # Hybrid + Remote + Listed Past Month
-    work_type = '3%2C3' # Hybrid + Remote + Listed Past Week
+    tpr = 'r604800' # Last listed Month: r2592000, Week: r604800, Day: r86400
+    work_type = '3%2C3' # Hybrid + Remote
     experience = '2' # Entry level
 
     url = get_url (title, location, tpr, work_type, experience)
@@ -60,15 +61,16 @@ def main():
         today = datetime.now().strftime("%Y-%m-%d")
 
         df = pd.DataFrame({
-            'Job Title': [''], #
-            'Company Name': [''], #
-            'Location': [''], #
-            'Salary Range': [''],
+            'Date Listed': [''],
+            'Job Title': [''],
             'Summary': [''],
-            'Work Arrangement': [''],
-            'Date Listed': [''], #
-            'Date Extracted': [''], #
-            'Link': [''] #
+            'Hard Skills': [''],
+            'Soft Skills': [''],
+            'Required Experience': [''],
+            'Company Name': [''],
+            'Location': [''],
+            'Link': [''],
+            'Date Extracted': [''] 
         })
         for i, card in enumerate (cards , start=1):
             try:
@@ -120,19 +122,29 @@ def main():
                     soup = BeautifulSoup(raw_html, 'lxml')
                     tree = etree.HTML(str(soup))
                     
-                    descriptions = tree.xpath('//div[contains(@class, "show-more-less-html__markup")]//li/text()')
-                    summary = ' '.join(descriptions)
+                    descriptions = tree.xpath('//div[contains(@class, "show-more-less-html__markup")]//text()')
+                    full_description = ' '.join(descriptions)
+                    ai_response = asyncio.run(summarize(full_description))
+
+                    summary = ai_response.get("summary")
+                    hard_skills = ai_response.get("hard_skills")
+                    soft_skills = ai_response.get("soft_skills")
+                    required_experience = ai_response.get("required_experience")
+
                 except Exception:
                     summary = None
 
                 new_data = pd.DataFrame({
+                    'Date Listed': [date_listed],
                     'Job Title': [job_title],
+                    'Summary': [summary],
+                    'Hard Skills': [hard_skills],
+                    'Soft Skills': [soft_skills],
+                    'Required Experience': [required_experience],
                     'Company Name': [company_name],
                     'Location': [location],
-                    'Summary': [summary],
-                    'Date Listed': [date_listed],
-                    'Date Extracted': [today], 
-                    'Link': [job_url]
+                    'Link': [job_url],
+                    'Date Extracted': [today] 
                 })
                 df = pd.concat([df, new_data], ignore_index=True)
 
