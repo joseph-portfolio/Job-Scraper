@@ -86,7 +86,7 @@ def main():
             
             for i, article in enumerate(articles, start=1):
                 try:
-                    # Click job posting FIRST
+                    # Click job posting
                     job_link_selector = f'//*[@id="jobcard-{i}"]/div[2]/a'
                     sb.wait_for_element_visible(job_link_selector, timeout=10)
                     sb.wait_for_element_clickable(job_link_selector, timeout=10)
@@ -100,8 +100,8 @@ def main():
                     sb.sleep(1)
 
                     # Get updated job detail HTML
-                    job_detail_html = sb.get_page_source()
-                    tree = etree.HTML(job_detail_html)
+                    raw_html = sb.get_page_source()
+                    tree = etree.HTML(raw_html)
 
                     # Job Title
                     try:
@@ -130,10 +130,10 @@ def main():
 
                     # Salary Range
                     try:
-                        salary_range = article.xpath('.//div[4]/div[3]/div[2]/span/span/text()')[0].strip()
+                        salary_range = article.xpath('.//span[@data-automation="jobSalary"]//text()')[0].strip()
                     except:
                         salary_range = None
-
+                    
                     # Summary (quick preview on card)
                     try:
                         summary_items = article.xpath('.//div[4]/ul/li/div[2]/span/text()')
@@ -173,7 +173,8 @@ def main():
                             soft_skills = ai_response.get("soft_skills")
                             required_experience = ai_response.get("required_experience")
                             # work_arrangement = ai_response.get("work_arrangement")
-                            break  # Success, break out of the retry loop
+
+                            break
                         except Exception as e:
                             print(f"Attempt {attempt + 1} failed to extract full description for job {job_title}: {e}")
                             try:

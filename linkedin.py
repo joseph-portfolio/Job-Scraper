@@ -103,11 +103,36 @@ def main():
                 
                 sb.sleep(0.5)
 
+                raw_html = sb.get_page_source()
+                tree = etree.HTML(raw_html)
+
+                # Extract full job description with retries
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        descriptions = tree.xpath('//div[contains(@class, "show-more-less-html__markup")]//text()')
+                        full_description = ' '.join(descriptions)
+
+                        ai_response = asyncio.run(summarize(full_description))
+                        ai_summary = ai_response.get("summary")
+                        hard_skills = ai_response.get("hard_skills")
+                        soft_skills = ai_response.get("soft_skills")
+                        required_experience = ai_response.get("required_experience")
+                        work_arrangement = ai_response.get("work_arrangement") 
+                        break
+
+                    except Exception as e:
+                        print(f"Attempt {attempt + 1} failed to extract full description for job {job_title}: {e}")
+                        try:
+                            sb.click(job_link_selector)
+                        except:
+                            sb.js_click(job_link_selector)
+                        sb.sleep(1)
+                        if attempt == max_retries - 1:
+                            print("Failed to extract. None detected.")
+                            ai_summary = hard_skills = soft_skills = required_experience = None
+
                 try:
-                    # Get fresh HTML after clicking the job posting
-                    raw_html = sb.get_page_source()
-                    tree = etree.HTML(raw_html)
-                    
                     descriptions = tree.xpath('//div[contains(@class, "show-more-less-html__markup")]//text()')
                     full_description = ' '.join(descriptions)
                     ai_response = asyncio.run(summarize(full_description))
@@ -120,25 +145,25 @@ def main():
 
                 except Exception:
                     ai_summary = None
-                
-                new_data = pd.DataFrame({
-                    'Date Listed': [date_listed],
-                    'Job Title': [job_title],
-                    'ai_summary': [ai_summary],
-                    'Hard Skills': [hard_skills],
-                    'Soft Skills': [soft_skills],
-                    'Required Experience': [required_experience],
-                    'Company Name': [company_name],
-                    'Location': [location],
-                    'Link': [job_url],
-                    'Date Extracted': [today],
-                    'Work Arrangement': [work_arrangement]
-                })
-                df = pd.concat([df, new_data], ignore_index=True)
 
             except Exception as e:
                 print(f"Failed to click job {i}: {str(e)}")
                 continue  # Skip to next job if this one fails
+
+            new_data = pd.DataFrame({
+                'Date Listed': [date_listed],
+                'Job Title': [job_title],
+                'ai_summary': [ai_summary],
+                'Hard Skills': [hard_skills],
+                'Soft Skills': [soft_skills],
+                'Required Experience': [required_experience],
+                'Company Name': [company_name],
+                'Location': [location],
+                'Link': [job_url],
+                'Date Extracted': [today],
+                'Work Arrangement': [work_arrangement]
+            })
+            df = pd.concat([df, new_data], ignore_index=True)
 
     title_filename = title.strip().replace(" ", "_")
     excel_filename = f"{title_filename}_linkedin_{today}_{timestamp}.xlsx"
