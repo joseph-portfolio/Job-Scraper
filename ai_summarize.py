@@ -8,11 +8,14 @@ load_dotenv()
 
 async def summarize(posting) -> str:
     prompt = f"""
-    Analyze the following job posting and extract the following details in a structured JSON format:
+    Extract only what is explicitly stated in the job posting. Use this format:
+
     Summary: A concise 1-2 sentence overview of the role.
     Hard Skills: Technical or job-specific skills required (e.g., programming languages, tools, certifications).
     Soft Skills: Interpersonal or general skills (e.g., communication, teamwork).
     Required Experience: Years of experience, industry background, or specific prior roles mentioned.
+    Work Arrangement: On-site, Hybrid or Remote
+
     Format the output as:
 
     ```json
@@ -20,7 +23,8 @@ async def summarize(posting) -> str:
         "summary": "str",  
         "hard_skills": "str",  
         "soft_skills": "str",  
-        "required_experience": "str"  
+        "required_experience": "str"
+        "work_arrangement": "str"  
     }}
 	
 	Job posting: {posting}
