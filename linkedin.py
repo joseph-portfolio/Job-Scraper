@@ -106,7 +106,7 @@ def main():
                 try:
                     # Get fresh HTML after clicking the job posting
                     raw_html = sb.get_page_source()
-                    tree = etree.HTML(str(soup))
+                    tree = etree.HTML(raw_html)
                     
                     descriptions = tree.xpath('//div[contains(@class, "show-more-less-html__markup")]//text()')
                     full_description = ' '.join(descriptions)
