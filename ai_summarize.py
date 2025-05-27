@@ -8,13 +8,14 @@ load_dotenv()
 
 async def summarize(posting) -> str:
     prompt = f"""
-    Extract only what is explicitly stated in the job posting. Use this format:
+    Extract only what is explicitly stated in the job posting. If not stated leave empty. Use this format:
 
     Summary: A concise 1-2 sentence overview of the role.
     Hard Skills: Technical or job-specific skills required (e.g., programming languages, tools, certifications).
     Soft Skills: Interpersonal or general skills (e.g., communication, teamwork).
     Required Experience: Years of experience, industry background, or specific prior roles mentioned.
     Work Arrangement: On-site, Hybrid or Remote
+    Salary Range: Pay
 
     Format the output as:
 
@@ -24,7 +25,8 @@ async def summarize(posting) -> str:
         "hard_skills": "str",  
         "soft_skills": "str",  
         "required_experience": "str"
-        "work_arrangement": "str"  
+        "work_arrangement": "str"
+        "salary_range": "str"  
     }}
 	
 	Job posting: {posting}

@@ -1,4 +1,3 @@
-from bs4 import BeautifulSoup
 from lxml import etree
 from datetime import datetime
 import pandas as pd
@@ -52,7 +51,6 @@ def main():
                     pass
 
         raw_html = sb.get_page_source()
-        soup = BeautifulSoup(raw_html, 'lxml')
         tree = etree.HTML(raw_html)
         cards = tree.xpath('//*[@id="main-content"]/section[2]/ul/li[*]/div')
         print(f"Number of jobs: {len(cards)}")
@@ -153,7 +151,7 @@ def main():
             new_data = pd.DataFrame({
                 'Date Listed': [date_listed],
                 'Job Title': [job_title],
-                'ai_summary': [ai_summary],
+                'AI Summary': [ai_summary],
                 'Hard Skills': [hard_skills],
                 'Soft Skills': [soft_skills],
                 'Required Experience': [required_experience],

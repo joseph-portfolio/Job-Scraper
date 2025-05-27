@@ -160,7 +160,7 @@ def main():
                     except Exception:
                         summary = None
 
-                    # Extract full job description with retries
+                    # Extract full job description
                     max_retries = 3
                     for attempt in range(max_retries):
                         try:
@@ -186,7 +186,6 @@ def main():
                                 print("Failed to extract. None detected.")
                                 ai_summary = hard_skills = soft_skills = required_experience = None
 
-                    # Collect data
                     new_data = pd.DataFrame({
                         'Date Listed': [date_listed_parsed],
                         'Job Title': [job_title],

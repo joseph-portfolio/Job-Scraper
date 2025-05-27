@@ -1,10 +1,12 @@
 from bs4 import BeautifulSoup
 from seleniumbase import SB
 import pandas as pd
-from datetime import datetime 
+from datetime import datetime
+from ai_summarize import summarize
+import asyncio
 
 def get_url (root_url, job_title, location, job_type):
-    template = '{}/jobs?q={}&l={}&sc={}'
+    template = '{}/jobs?q={}&l={}&sort=date&sc={}'
     url = template.format(root_url,job_title, location, job_type)
     return url
 
@@ -12,20 +14,14 @@ def main():
     root_url = "https://ph.indeed.com"
     title = 'python'
     location = 'philippines'
-    # job_type = '0kf%3Aattr%287EQCZ%29%3B' # Fresh Grad
-    job_type = ''
+    job_type = '0kf%3Aattr%287EQCZ%29%3B' # Fresh Grad
+    # job_type = '' # Any
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    timestamp = now.strftime("%H%M%S")
 
-    df = pd.DataFrame({
-        'Job Title': [''],
-        'Company Name': [''],
-        'Location': [''],
-        'Salary Range': [''],
-        'Summary': [''],
-        'Link': [''],
-        'Date Extracted': ['']
-    })
+    df = pd.DataFrame()
 
     #  Initial url
     url = get_url(root_url, title, location, job_type)
@@ -40,10 +36,10 @@ def main():
 
                 try:
                     sb.assert_text("Find jobs", "button.yosegi-InlineWhatWhere-primaryButton[type='submit']")
-                    print("Success")
+                    print("Bypassed Cloudflare")
                     break
                 except Exception:
-                    print("Retrying...")
+                    print("Bypassing Cloudflare...")
                     continue 
 
             raw_html = sb.get_page_source()
@@ -52,16 +48,25 @@ def main():
             
             for card in cards:
                 td_tag = card.table.tbody.tr.td
-
+                
                 # Job Title and URL
                 try:
-                    job_div = td_tag.find('div', {'class','css-pt3vth e37uo190'}).h2.a
-                    job_title = job_div.span.get('title')
+                    job_a = td_tag.find('a', {'class', 'jcs-JobTitle css-1baag51 eu4oa1w0'})
+                    href = job_a.get('href')
+
+                    # Click the card
+                    selector = f'a[href="{href}"]'
+                    sb.click(selector)
+                    sb.sleep(2)
+
+                    # Updated html
+                    raw_html = sb.get_page_source()
+                    soup = BeautifulSoup(raw_html, 'lxml')
+
+                    job_title = job_a.span.get('title')
+                    job_url = root_url + href
                 except AttributeError:
                     job_title = None
-                try:
-                    job_url = root_url + job_div.get('href')
-                except Exception:
                     job_url = None
 
                 # Company Name
@@ -78,26 +83,58 @@ def main():
                     company_location = None
 
                 # Salary Range
-                try:
-                    metadata_div = td_tag.find('div', {'class','jobMetaDataGroup css-qspwa8 eu4oa1w0'}).ul
-                    salary_range = metadata_div.find('li', {'class','css-u74ql7 eu4oa1w0'}).div.div.text.strip()
-                except AttributeError:
-                    salary_range = None
+                # try:
+                #     metadata_div = td_tag.find('div', {'class','jobMetaDataGroup css-qspwa8 eu4oa1w0'}).ul
+                #     salary_range = metadata_div.find('li', {'class','css-u74ql7 eu4oa1w0'}).div.div.text.strip()
+                # except AttributeError:
+                #     salary_range = None
 
-                # Summary
+                # Summary (quick preview)
                 try:
                     summary = card.find('div',{'class', 'underShelfFooter'}).div.div.ul.li.text.strip()
                 except AttributeError:
                     summary = None
 
+                # Extract full job description
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        descriptions = soup.find('div', id='jobDescriptionText')
+                        full_description = descriptions.get_text(separator=' ', strip=True) if descriptions else ""
+
+                        ai_response = asyncio.run(summarize(full_description))
+                        ai_summary = ai_response.get("summary")
+                        hard_skills = ai_response.get("hard_skills")
+                        soft_skills = ai_response.get("soft_skills")
+                        required_experience = ai_response.get("required_experience")
+                        work_arrangement = ai_response.get("work_arrangement")
+                        salary_range = ai_response.get("salary_range")
+
+                        break
+                    except Exception as e:
+                        print(f"Attempt {attempt + 1} failed to extract full description for job {job_title}: {e}")
+                        try:
+                            sb.click(selector)
+                        except:
+                            sb.js_click(selector)
+                        sb.sleep(1)
+                        if attempt == max_retries - 1:
+                            print("Failed to extract. None detected.")
+                            ai_summary = hard_skills = soft_skills = required_experience = None
+                          
                 new_data = pd.DataFrame({
-                    'Job Title': [job_title],
-                    'Company Name': [company_name],
-                    'Location': [company_location],
-                    'Salary Range': [salary_range],
-                    'Summary': [summary],
-                    'Link': [job_url],
-                    'Date Extracted': [today]
+                    'Job Title': [job_title], #
+                    'Summary': [summary], #TODO
+                    'AI Summary': [ai_summary], #TODO
+                    'Hard Skills': [hard_skills], #TODO
+                    'Soft Skills': [soft_skills], #TODO
+                    'Required Experience': [required_experience], #TODO
+                    'Company Name': [company_name], #
+                    'Location': [company_location], #
+                    'Link': [job_url], #
+                    'Date Extracted': [today], #
+                    'Salary Range': [salary_range], #TODO
+                    'Work Arrangement': [work_arrangement] #TODO
                 })
                 df = pd.concat([df, new_data], ignore_index=True)
 
@@ -107,10 +144,8 @@ def main():
             except AttributeError:
                 break
             
-    # csv_filename = f"{title}_indeed_{today}.csv"
-    excel_filename = f"{title}_indeed_{today}.xlsx"
-
-    # df.to_csv(csv_filename, index=True)
+    title_filename = title.strip().replace(" ", "_")
+    excel_filename = f"{title_filename}_indeed_{today}_{timestamp}.xlsx"
     df.to_excel(excel_filename, index=False)
 
 if __name__ == '__main__':
